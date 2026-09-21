@@ -4,10 +4,12 @@ import pygame as pg
 # Dimensione originale dello sprite sullo sprite sheet
 SPRITE_SIZE = 16
 
-# Dimensione desiderata a schermo (ingrandita)
+# Dimensione desiderata a schermo
 CELL = 40  
 SPRITE_PATH = "assets/img/pac-man.png"
 
+#Velocità di animazione
+ANIM_SPEED = 6
 
 class Giocatore:
     """Rappresenta Pac-Man controllato dal giocatore."""
@@ -37,6 +39,10 @@ class Giocatore:
         self._dir_successiva = "Fermo"
         self._vite = 3
         self._vivo = True
+
+        #Gestione animazione
+        self._frame_index = 0
+        self._anim_timer = 0
 
         # Carica e mantiene lo sprite originale
         self._sprite_sheet = pg.image.load(SPRITE_PATH)
@@ -92,6 +98,13 @@ class Giocatore:
         self._x += dx * self._velocita
         self._y += dy * self._velocita
 
+        #Gestione animazione
+        if self._dir_corrente != "Fermo":
+            self._anim_timer += 1
+            if self._anim_timer >= ANIM_SPEED:
+                self._anim_timer = 0
+                self._frame_index = 1 if self._frame_index == 0 else 0 #Alterno tra frame 0 e 1
+
         # Effetto Pac-Man sui bordi dello schermo
         raggio = self._w // 2
         if self._x > self._canvas_w + raggio:
@@ -112,14 +125,26 @@ class Giocatore:
     # Disegno
     # ------------------------------------------------------------------
     def disegna(self) -> None:
-        """Ritaglia il singolo frame 16x16, lo scala a 40x40 e lo disegna."""
-        # 1. Taglia la singola cella 16x16 dallo sprite sheet (in alto a sinistra: 0, 0)
-        sub_surface = self._sprite_sheet.subsurface((0, 0, SPRITE_SIZE, SPRITE_SIZE))
+        """Disegno il frame selezionato, ruotato/riflesso in base alla direzione"""
+        #Calcolo la colonna dello sprite sheet
+        clip_x = self._frame_index * SPRITE_SIZE
+        clip_y = 0
 
-        # 2. Ingrandisce la tessera alla dimensione desiderata (CELL x CELL)
+        #Ritaglio la tessera 16x16
+        sub_surface = self._sprite_sheet.subsurface((clip_x, clip_y, SPRITE_SIZE, SPRITE_SIZE))
+
+        #Rotazione in base alla direzione
+        if self._dir_corrente == "ArrowLeft":
+            sub_surface = pg.transform.flip(sub_surface, True, False)
+        elif self._dir_corrente == "ArrowUp":
+            sub_surface = pg.transform.rotate(sub_surface, 90)
+        elif self._dir_corrente == "ArrowDown":
+            sub_surface = pg.transform.rotate(sub_surface, 270)
+
+        #Scalo lo sprite alle dimensioni 40x40
         scaled_sprite = pg.transform.scale(sub_surface, (self._w, self._h))
 
-        # 3. Disegna la superficie ingrandita sul canvas di g2d
+        #Disegno a schermo
         canvas = g2d.drawing_surface()
         pos_x = int(self._x - self._w // 2)
         pos_y = int(self._y - self._h // 2)
