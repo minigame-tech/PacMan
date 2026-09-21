@@ -26,17 +26,17 @@ class Giocatore:
             self.direzione_corrente = self.direzione_successiva
         dx, dy = self.direzioni[self.direzione_corrente]
 
-        self.x += dx * self.velocita
-        self.y += dy * self.velocita
-        if self.x > self.larghezza_finestra + self.raggio:
-            self.x = -self.raggio
-        elif self.x < -self.raggio:
-            self.x = self.larghezza_finestra + self.raggio
-        if self.y > self.altezza_finestra + self.raggio:
-            self.y = -self.raggio
-        elif self.y < -self.raggio:
-            self.y = self.altezza_finestra + self.raggio
+        self._x += dx * self.velocita
+        self._y += dy * self.velocita
+        if self._x > self.larghezza_finestra + self.raggio:
+            self._x = -self.raggio
+        elif self._x < -self.raggio:
+            self._x = self.larghezza_finestra + self.raggio
+        if self._y > self.altezza_finestra + self.raggio:
+            self._y = -self.raggio
+        elif self._y < -self.raggio:
+            self._y = self.altezza_finestra + self.raggio
 
     def disegna(self):
         g2d.set_color((255, 255, 0))
-        g2d.draw_circle((int(self.x), int(self.y)), self.raggio)
+        g2d.draw_circle((int(self._x), int(self._y)), self.raggio)

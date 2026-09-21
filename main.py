@@ -1,4 +1,4 @@
-from src import Giocatore
+from src.Giocatore import Giocatore
 import lib.g2d as g2d
 
 LARGHEZZA = 800
