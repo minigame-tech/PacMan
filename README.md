@@ -3,7 +3,7 @@
 A remake of the classic arcade game **Pacman** developed in **Python**. It uses **Pygame** to power the audio engine and the **g2d** module to handle the graphical logic and core game loops.
 
 ## 🚀 Key Features
-- Gameplay mechanics faithful to the original arcade version (frog movement, obstacles, rivers, and roads).
+- Gameplay mechanics faithful to the original arcade version (PacMan movement, obstacles and Enemy).
 - Dynamic sound effects managed via Pygame.
 - Lightweight and structured graphical rendering using g2d.
 
