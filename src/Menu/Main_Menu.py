@@ -31,13 +31,13 @@ _BTN2_CY = 390 # ESCI
 _BTNS = [_BTN0_CY, _BTN1_CY, _BTN2_CY]
 
 # Classe principale
-class MainMenu:
+class Main_Menu:
     def __init__(self, canvas_w: int = SCREEN_WIDTH, canvas_h: int = SCREEN_HEIGHT):
         self._cw = canvas_w
         self._ch = canvas_h
 
         self._voce_sel  = 0 # 0=GIOCA, 1=COME SI GIOCA, 2=ESCI
-        self._anim_tich = 0
+        self._anim_tick = 0
         self._mostra_istruzioni = False
 
         # Segali letti dal loop principale
@@ -61,7 +61,7 @@ class MainMenu:
     def aggiorna(self) -> None:
         self._avvia = False
         self._esci  = False
-        self._anim_tich += 1
+        self._anim_tick += 1
 
         if self._mostra_istruzioni:
             # Qualsiasi tasto o click chiude la schermata istruzioni
@@ -154,16 +154,17 @@ class MainMenu:
         for i in range(11):
             x = 60 + i * 48
             g2d.set_color(COLOR_WHITE)
-            g2d.fill_circle((x, y), 4)
+            g2d.draw_circle((x, y), 4)
 
     def _disegna_bottone(self, label: str, cy: int, selezionato: bool) -> None:
         cx = self._cw // 2
         bx = cx - _BTN_W // 2
         by = cy - _BTN_H // 2
 
+        # Sfondo del bottone
         alpha = 200 if selezionato else 100
         g2d.set_color((0, 0, 0, alpha))
-        g2d.set_color((bx, by), (_BTN_W, _BTN_H))
+        g2d.draw_rect((bx, by), (_BTN_W, _BTN_H))
 
         # Bordo del bottone
         border = COLOR_YELLOW if selezionato else COLOR_BLUE
@@ -173,14 +174,15 @@ class MainMenu:
         g2d.draw_line((bx + _BTN_W, by + _BTN_H), (bx, by + _BTN_H), 3)
         g2d.draw_line((bx, by + _BTN_H), (bx, by), 3)
 
-        # Icone/Pallini ai lati dei bottoni
+        # Pallini ai lati del bottone
         dot_color = COLOR_YELLOW if selezionato else COLOR_GRAY
         g2d.set_color(dot_color)
-        g2d.fill_circle((bx - 15, cy), 6)
-        g2d.fill_circle((bx + _BTN_W + 15, cy), 6)
+        g2d.draw_circle((bx - 15, cy), 6)
+        g2d.draw_circle((bx + _BTN_W + 15, cy), 6)
 
-        text_color = COLOR_YELLOW if selezionato else COLOR_WHITE
-        g2d.set_color(text_color)
+        # Testo della voce di menu
+        testo_color = COLOR_YELLOW if selezionato else COLOR_WHITE
+        g2d.set_color(testo_color)
         g2d.draw_text(label, (cx, cy), 24)
 
     def _disegna_cursore_pacman(self) -> None:
@@ -192,11 +194,11 @@ class MainMenu:
 
         # Pac-man corpo
         g2d.set_color(COLOR_YELLOW)
-        g2d.fill_circle((rx, cy), 16)
+        g2d.draw_circle((rx, cy), 16)
 
         # Pallino 'cibo' che punta al menu
         g2d.set_color(COLOR_WHITE)
-        g2d.fill_circle((rx + 22, cy), 4)
+        g2d.draw_circle((rx + 22, cy), 4)
 
     def _disegna_decorazioni_basse(self) -> None:
         """Disegna una piccola parata di fantasmini nella parte bassa"""
@@ -206,15 +208,15 @@ class MainMenu:
         for i, color in enumerate(fantasmi):
             fx = 120 + i * 110
             g2d.set_color(color)
-            g2d.fill_circle((fx, bottom_y), 15)
+            g2d.draw_circle((fx, bottom_y), 15)
 
             # Occhi fantasma
             g2d.set_color(COLOR_WHITE)
-            g2d.fill_circle((fx - 5, bottom_y - 3), 4)
-            g2d.fill_circle((fx + 5, bottom_y - 3), 4)
+            g2d.draw_circle((fx - 5, bottom_y - 3), 4)
+            g2d.draw_circle((fx + 5, bottom_y - 3), 4)
             g2d.set_color(COLOR_BLUE)
-            g2d.fill_circle((fx - 5, bottom_y - 3), 2)
-            g2d.fill_circle((fx + 5, bottom_y - 3), 2)
+            g2d.draw_circle((fx - 5, bottom_y - 3), 2)
+            g2d.draw_circle((fx + 5, bottom_y - 3), 2)
 
     def _disegna_schermata_istruzioni(self) -> None:
         """Overlay semitrasparente con le istruzioni di Pac-Man"""
