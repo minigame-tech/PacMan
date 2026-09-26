@@ -13,9 +13,6 @@ giocatore = Giocatore(
 )
 
 def tick():
-    #Lancio il main menu
-    Main_Menu.draw_menu()
-
     # 1. Gestione dell'input del giocatore
     giocatore.gestisci_input()
 
