@@ -1,26 +1,33 @@
 from src.Giocatore import Giocatore
+from src.Menu.Main_Menu import Main_Menu
 import lib.g2d as g2d
 
 LARGHEZZA = 800
 ALTEZZA = 600
 
-giocatore = Giocatore(
-    400,
-    300,
-    LARGHEZZA,
-    ALTEZZA
-)
+# Inizializzazione
+menu = Main_Menu(LARGHEZZA, ALTEZZA)
+giocatore = Giocatore(LARGHEZZA // 2, ALTEZZA // 2, LARGHEZZA, ALTEZZA)
+
+stato_gioco = "MENU"
 
 def tick():
-    # 1. Gestione dell'input del giocatore
-    giocatore.gestisci_input()
+    global stato_gioco
 
-    # 2. Aggiornamento della logica
-    giocatore.aggiorna()
+    if stato_gioco == "MENU":
+        menu.aggiorna()
+        if menu.avvia:
+            stato_gioco = "GIOCO"
+        elif menu.esci:
+            g2d.close_canvas()
+            return
+        menu.disegna()
 
-    # 3. Disegno a schermo
-    g2d.clear_canvas()
-    giocatore.disegna()
+    elif stato_gioco == "GIOCO":
+        giocatore.gestisci_input()
+        giocatore.aggiorna()
+        g2d.clear_canvas()
+        giocatore.disegna()
 
 def main():
     g2d.init_canvas((LARGHEZZA, ALTEZZA))
