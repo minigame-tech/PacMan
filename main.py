@@ -2,7 +2,7 @@ from src.Giocatore import Giocatore
 from src.Menu.Main_Menu import Main_Menu
 import lib.g2d as g2d
 
-LARGHEZZA = 800
+LARGHEZZA = 750
 ALTEZZA = 600
 
 # Inizializzazione

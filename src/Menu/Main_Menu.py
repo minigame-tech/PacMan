@@ -4,7 +4,10 @@ import lib.g2d as g2d
 # ---------------------------------------------------------------------------
 # Risorse e Costanti Grafiche
 # ---------------------------------------------------------------------------
-BACKGROUND = "assets/img/Backgound_MainMenu.jpg"  # nome allineato al file reale
+BACKGROUND = "assets/img/Backgound_MainMenu.jpeg"
+
+BG_OFFSET_X = 0
+BG_OFFSET_Y = -60
 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
@@ -134,7 +137,7 @@ class Main_Menu:
     def _disegna_sfondo(self) -> None:
         # Se presente l'immagine di sfondo la disegna, altrimenti sfondo nero
         try:
-            g2d.draw_image(BACKGROUND, (0, 0))
+            g2d.draw_image(BACKGROUND, (BG_OFFSET_X, BG_OFFSET_Y))
             g2d.set_color((0, 0, 0, 190))
             g2d.draw_rect((0, 0), (self._cw, self._ch))
         except Exception:
