@@ -1,23 +1,31 @@
 import lib.g2d as g2d
 
+# ---------------------------------------------------------------------------
+# Risorse e Costanti Grafiche
+# ---------------------------------------------------------------------------
 SPRITE = "assets/img/Logo.jpeg"
 BACKGROUND = "assets/img/Background_MainMenu.jpg"
 
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 600
 
-COLOR_BLACK  = (0, 0, 0)
+# Colori Pac-Man
+COLOR_BLACK = (0, 0, 0)
 COLOR_YELLOW = (255, 255, 0)
-COLOR_WHITE  = (255, 255, 255)
-COLOR_BLUE   = (0, 0, 255)
+COLOR_WHITE = (255, 255, 255)
+COLOR_BLUE = (0, 0, 255)
+COLOR_RED = (255, 0, 0)
+COLOR_CYAN = (0, 255, 255)
+COLOR_PINK = (255, 184, 255)
+COLOR_ORANGE = (255, 184, 82)
+COLOR_GRAY = (120, 120, 120)
 
-def draw_menu():
-    """Disegno gli elementi essenziali del menu principale"""
-    g2d.clear_canvas()
-    g2d.draw_text("PACMAN", COLOR_YELLOW, (150, 150), 60)
+# Dimensioni area cliccabile dei bottoni
+_BTN_W, _BTN_H = 280, 48
 
-    g2d.draw_text("Premi SPAZIO per iniziare", COLOR_WHITE, (140, 350), 24)
-    g2d.draw_text("Premi ESC per uscire", COLOR_WHITE, (170, 400), 20)
+#Posizioni Y dei centri dei 3 bottoni
+_BTN0_CY = 250 # GIOCA
+_BTN1_CY = 320 # COME SI GIOCA
+_BTN2_CY = 390 # ESCI
 
-    g2d.set_color(COLOR_YELLOW)
-    g2d.fill_circle((300, 260), 30)
+_BTNS = [_BTN0_CY, _BTN1_CY, _BTN2_CY]
