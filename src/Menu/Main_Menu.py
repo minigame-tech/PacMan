@@ -1,45 +1,24 @@
 import math
+import pygame
 import lib.g2d as g2d
 
-# ---------------------------------------------------------------------------
-# Risorse e Costanti Grafiche
-# ---------------------------------------------------------------------------
 BACKGROUND = "assets/img/Backgound_MainMenu.jpeg"
 
-BG_OFFSET_X = 0
-BG_OFFSET_Y = -60
-
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
-
-# Colori Pac-Man
-COLOR_BLACK = (0, 0, 0)
+COLOR_BLACK  = (0, 0, 0)
 COLOR_YELLOW = (255, 255, 0)
-COLOR_WHITE = (255, 255, 255)
-COLOR_BLUE = (0, 0, 255)
-COLOR_RED = (255, 0, 0)
-COLOR_CYAN = (0, 255, 255)
-COLOR_PINK = (255, 184, 255)
+COLOR_WHITE  = (255, 255, 255)
+COLOR_BLUE   = (0, 0, 255)
+COLOR_RED    = (255, 0, 0)
+COLOR_CYAN   = (0, 255, 255)
+COLOR_PINK   = (255, 184, 255)
 COLOR_ORANGE = (255, 184, 82)
-COLOR_GRAY = (120, 120, 120)
+COLOR_GRAY   = (120, 120, 120)
 
-# Dimensioni area cliccabile dei bottoni
-_BTN_W, _BTN_H = 280, 48
-
-# Posizioni Y dei centri dei 3 bottoni
-_BTN0_CY = 260  # GIOCA
-_BTN1_CY = 330  # COME SI GIOCA
-_BTN2_CY = 400  # ESCI
-
-_BTNS = [_BTN0_CY, _BTN1_CY, _BTN2_CY]
-
-# Ampiezza e velocità dell'oscillazione orizzontale dei fantasmini
-_GHOST_SWING_AMPL = 18
+_GHOST_SWING_AMPL = 12
 _GHOST_SWING_SPEED = 0.08
 
-
 class Main_Menu:
-    def __init__(self, canvas_w: int = SCREEN_WIDTH, canvas_h: int = SCREEN_HEIGHT):
+    def __init__(self, canvas_w: int, canvas_h: int):
         self._cw = canvas_w
         self._ch = canvas_h
 
@@ -47,13 +26,18 @@ class Main_Menu:
         self._anim_tick = 0
         self._mostra_istruzioni = False
 
-        # Segnali letti dal loop principale
         self._avvia = False
         self._esci = False
 
-    # ---------------------------------------------------------------------------
-    # Segnali pubblici
-    # ---------------------------------------------------------------------------
+        self._btn_w = int(self._cw * 0.70)
+        self._btn_h = 42
+        
+        self._btns_y = [
+            int(self._ch * 0.46),
+            int(self._ch * 0.58),
+            int(self._ch * 0.70),
+        ]
+
     @property
     def avvia(self) -> bool:
         return self._avvia
@@ -62,16 +46,12 @@ class Main_Menu:
     def esci(self) -> bool:
         return self._esci
 
-    # ---------------------------------------------------------------------------
-    # Aggiornamento Logic
-    # ---------------------------------------------------------------------------
     def aggiorna(self) -> None:
         self._avvia = False
         self._esci = False
         self._anim_tick += 1
 
         if self._mostra_istruzioni:
-            # Qualsiasi tasto o click chiude la schermata istruzioni
             if (
                 g2d.key_pressed("Enter")
                 or g2d.key_pressed("Escape")
@@ -84,16 +64,16 @@ class Main_Menu:
             self._gestisci_mouse()
 
     def _gestisci_tastiera(self) -> None:
-        up_pressed = g2d.key_pressed("Up") or g2d.key_pressed("ArrowUp") or g2d.key_pressed("w") or g2d.key_pressed("W")
-        down_pressed = g2d.key_pressed("Down") or g2d.key_pressed("ArrowDown") or g2d.key_pressed("s") or g2d.key_pressed("S")
-        enter_pressed = g2d.key_pressed("Enter") or g2d.key_pressed("Return") or g2d.key_pressed("Spacebar") or g2d.key_pressed(" ")
+        up = g2d.key_pressed("Up") or g2d.key_pressed("ArrowUp") or g2d.key_pressed("w") or g2d.key_pressed("W")
+        down = g2d.key_pressed("Down") or g2d.key_pressed("ArrowDown") or g2d.key_pressed("s") or g2d.key_pressed("S")
+        enter = g2d.key_pressed("Enter") or g2d.key_pressed("Return") or g2d.key_pressed("Spacebar") or g2d.key_pressed(" ")
 
-        if up_pressed:
+        if up:
             self._voce_sel = (self._voce_sel - 1) % 3
-        elif down_pressed:
+        elif down:
             self._voce_sel = (self._voce_sel + 1) % 3
 
-        if enter_pressed:
+        if enter:
             self._conferma()
 
     def _gestisci_mouse(self) -> None:
@@ -101,10 +81,10 @@ class Main_Menu:
             return
 
         mx, my = g2d.mouse_pos()
-        bx = self._cw // 2 - _BTN_W // 2
-        for i, cy in enumerate(_BTNS):
-            if bx <= mx <= bx + _BTN_W:
-                if cy - _BTN_H // 2 <= my <= cy + _BTN_H // 2:
+        bx = self._cw // 2 - self._btn_w // 2
+        for i, cy in enumerate(self._btns_y):
+            if bx <= mx <= bx + self._btn_w:
+                if cy - self._btn_h // 2 <= my <= cy + self._btn_h // 2:
                     self._voce_sel = i
                     self._conferma()
                     return
@@ -117,17 +97,14 @@ class Main_Menu:
         else:
             self._esci = True
 
-    # ---------------------------------------------------------------------------
-    # Disegno
-    # ---------------------------------------------------------------------------
     def disegna(self) -> None:
         g2d.clear_canvas()
         self._disegna_sfondo()
         self._disegna_logo()
         self._disegna_sottotitolo()
-        self._disegna_bottone("  GIOCA  ", _BTN0_CY, self._voce_sel == 0)
-        self._disegna_bottone(" COME SI GIOCA ", _BTN1_CY, self._voce_sel == 1)
-        self._disegna_bottone("   ESCI   ", _BTN2_CY, self._voce_sel == 2)
+        self._disegna_bottone("GIOCA", self._btns_y[0], self._voce_sel == 0)
+        self._disegna_bottone("COME SI GIOCA", self._btns_y[1], self._voce_sel == 1)
+        self._disegna_bottone("ESCI", self._btns_y[2], self._voce_sel == 2)
         self._disegna_cursore_pacman()
         self._disegna_decorazioni_basse()
 
@@ -135,10 +112,12 @@ class Main_Menu:
             self._disegna_schermata_istruzioni()
 
     def _disegna_sfondo(self) -> None:
-        # Se presente l'immagine di sfondo la disegna, altrimenti sfondo nero
         try:
-            g2d.draw_image(BACKGROUND, (BG_OFFSET_X, BG_OFFSET_Y))
-            g2d.set_color((0, 0, 0, 190))
+            raw = g2d._loaded[BACKGROUND]
+            scaled = pygame.transform.scale(raw, (self._cw, self._ch))
+            canvas = g2d.drawing_surface()
+            canvas.blit(scaled, (0, 0))
+            g2d.set_color((0, 0, 0, 180))
             g2d.draw_rect((0, 0), (self._cw, self._ch))
         except Exception:
             g2d.set_color(COLOR_BLACK)
@@ -146,115 +125,90 @@ class Main_Menu:
 
     def _disegna_logo(self) -> None:
         cx = self._cw // 2
-        # Piccola ombra per staccare il testo dallo sfondo
+        y = int(self._ch * 0.15)
         g2d.set_color(COLOR_BLACK)
-        g2d.draw_text("PACMAN", (cx + 2, 82), 55)
+        g2d.draw_text("PACMAN", (cx + 2, y + 2), 48)
         g2d.set_color(COLOR_YELLOW)
-        g2d.draw_text("PACMAN", (cx, 80), 55)
+        g2d.draw_text("PACMAN", (cx, y), 48)
 
     def _disegna_sottotitolo(self) -> None:
         g2d.set_color(COLOR_CYAN)
-        g2d.draw_text(
-            "Usa le frecce • INVIO per confermare", (self._cw // 2, 145), 18
-        )
+        g2d.draw_text("Frecce / WASD • INVIO", (self._cw // 2, int(self._ch * 0.28)), 16)
 
     def _disegna_bottone(self, label: str, cy: int, selezionato: bool) -> None:
         cx = self._cw // 2
-        bx = cx - _BTN_W // 2
-        by = cy - _BTN_H // 2
+        bx = cx - self._btn_w // 2
+        by = cy - self._btn_h // 2
 
-        # Sfondo del bottone (più coprente per leggibilità sopra lo sfondo)
         alpha = 220 if selezionato else 140
         g2d.set_color((0, 0, 0, alpha))
-        g2d.draw_rect((bx, by), (_BTN_W, _BTN_H))
+        g2d.draw_rect((bx, by), (self._btn_w, self._btn_h))
 
-        # Bordo del bottone
         border = COLOR_YELLOW if selezionato else COLOR_BLUE
         g2d.set_color(border)
-        g2d.draw_line((bx, by), (bx + _BTN_W, by), 3)
-        g2d.draw_line((bx + _BTN_W, by), (bx + _BTN_W, by + _BTN_H), 3)
-        g2d.draw_line((bx + _BTN_W, by + _BTN_H), (bx, by + _BTN_H), 3)
-        g2d.draw_line((bx, by + _BTN_H), (bx, by), 3)
+        g2d.draw_line((bx, by), (bx + self._btn_w, by), 2)
+        g2d.draw_line((bx + self._btn_w, by), (bx + self._btn_w, by + self._btn_h), 2)
+        g2d.draw_line((bx + self._btn_w, by + self._btn_h), (bx, by + self._btn_h), 2)
+        g2d.draw_line((bx, by + self._btn_h), (bx, by), 2)
 
-        # Pallini ai lati del bottone (indicatore di selezione minimale)
         dot_color = COLOR_YELLOW if selezionato else COLOR_GRAY
         g2d.set_color(dot_color)
-        g2d.draw_circle((bx - 15, cy), 6)
-        g2d.draw_circle((bx + _BTN_W + 15, cy), 6)
+        g2d.draw_circle((bx - 12, cy), 5)
+        g2d.draw_circle((bx + self._btn_w + 12, cy), 5)
 
-        # Testo della voce di menu
         testo_color = COLOR_YELLOW if selezionato else COLOR_WHITE
         g2d.set_color(testo_color)
-        g2d.draw_text(label, (cx, cy), 24)
+        g2d.draw_text(label, (cx, cy), 20)
 
     def _disegna_cursore_pacman(self) -> None:
-        """Disegna un Pac-Man stilizzato vicino alla
-        voce selezionata con animazione, come freccia direzionale"""
-        cy = _BTNS[self._voce_sel]
-        offset_x = 5 if (self._anim_tick // 10) % 2 == 0 else 0
-        rx = self._cw // 2 - _BTN_W // 2 - 55 + offset_x
+        cy = self._btns_y[self._voce_sel]
+        offset_x = 3 if (self._anim_tick // 10) % 2 == 0 else 0
+        rx = self._cw // 2 - self._btn_w // 2 - 28 + offset_x
 
-        # Contorno scuro per staccarlo dallo sfondo
         g2d.set_color(COLOR_BLACK)
-        g2d.draw_circle((rx, cy), 18)
-
-        # Pac-man corpo
+        g2d.draw_circle((rx, cy), 12)
         g2d.set_color(COLOR_YELLOW)
-        g2d.draw_circle((rx, cy), 16)
-
-        # Pallino 'cibo' che punta al menu
+        g2d.draw_circle((rx, cy), 10)
         g2d.set_color(COLOR_WHITE)
-        g2d.draw_circle((rx + 22, cy), 4)
+        g2d.draw_circle((rx + 14, cy), 3)
 
     def _disegna_decorazioni_basse(self) -> None:
-        """Disegna una piccola parata di fantasmini nella parte bassa,
-        centrata orizzontalmente, animati con una traslazione avanti-indietro"""
-        bottom_y = self._ch - 40
+        bottom_y = self._ch - 30
         fantasmi = [COLOR_RED, COLOR_PINK, COLOR_CYAN, COLOR_ORANGE]
 
-        # Oscillazione condivisa sull'asse X (sinusoidale, avanti e indietro)
         shift = int(_GHOST_SWING_AMPL * math.sin(self._anim_tick * _GHOST_SWING_SPEED))
-
-        # Centra il gruppo di fantasmini rispetto al centro dello schermo
-        spacing = 110
+        spacing = 50
         gruppo_w = spacing * (len(fantasmi) - 1)
         start_x = self._cw // 2 - gruppo_w // 2
 
-        margin = 25  # distanza minima dai bordi dello schermo
+        margin = 20
         for i, color in enumerate(fantasmi):
             fx = start_x + i * spacing + shift
-            # Clamp per restare sempre nei limiti dello schermo
             fx = max(margin, min(self._cw - margin, fx))
 
-            # Contorno scuro per leggibilità sopra lo sfondo
             g2d.set_color(COLOR_BLACK)
-            g2d.draw_circle((fx, bottom_y), 17)
-
+            g2d.draw_circle((fx, bottom_y), 12)
             g2d.set_color(color)
-            g2d.draw_circle((fx, bottom_y), 15)
+            g2d.draw_circle((fx, bottom_y), 10)
 
-            # Occhi fantasma
             g2d.set_color(COLOR_WHITE)
-            g2d.draw_circle((fx - 5, bottom_y - 3), 4)
-            g2d.draw_circle((fx + 5, bottom_y - 3), 4)
+            g2d.draw_circle((fx - 3, bottom_y - 2), 3)
+            g2d.draw_circle((fx + 3, bottom_y - 2), 3)
             g2d.set_color(COLOR_BLUE)
-            g2d.draw_circle((fx - 5, bottom_y - 3), 2)
-            g2d.draw_circle((fx + 5, bottom_y - 3), 2)
+            g2d.draw_circle((fx - 3, bottom_y - 2), 1)
+            g2d.draw_circle((fx + 3, bottom_y - 2), 1)
 
     def _disegna_schermata_istruzioni(self) -> None:
-        """Overlay semitrasparente con le istruzioni di Pac-Man"""
-        # Sfondo scuro semitrasparente
-        g2d.set_color((0, 0, 0, 230))
+        g2d.set_color((0, 0, 0, 235))
         g2d.draw_rect((0, 0), (self._cw, self._ch))
 
-        # Riquadro centrale bordato di blu
-        box_w, box_h = 480, 360
+        box_w, box_h = int(self._cw * 0.88), int(self._ch * 0.82)
         box_x = self._cw // 2 - box_w // 2
         box_y = self._ch // 2 - box_h // 2
-        g2d.set_color((0, 0, 30, 240))
+        
+        g2d.set_color((5, 5, 25, 245))
         g2d.draw_rect((box_x, box_y), (box_w, box_h))
 
-        # Bordo Blu Neon stile Maze
         g2d.set_color(COLOR_BLUE)
         g2d.draw_line((box_x, box_y), (box_x + box_w, box_y), 3)
         g2d.draw_line((box_x + box_w, box_y), (box_x + box_w, box_y + box_h), 3)
@@ -265,35 +219,29 @@ class Main_Menu:
 
         # Titolo
         g2d.set_color(COLOR_YELLOW)
-        g2d.draw_text("COME SI GIOCA", (cx, box_y + 35), 28)
+        g2d.draw_text("COME SI GIOCA", (cx, box_y + 35), 26)
 
-        # Controlli
+        # Controlli disposti in due colonne bilanciate
         righe = [
-            ("↑ / W", "Spostati verso l'Alto"),
-            ("↓ / S", "Spostati verso il Basso"),
+            ("↑ / W", "Spostati Su"),
+            ("↓ / S", "Spostati Giu"),
             ("← / A", "Spostati a Sinistra"),
             ("→ / D", "Spostati a Destra"),
         ]
         y0 = box_y + 90
         for i, (tasto, desc) in enumerate(righe):
-            y = y0 + i * 38
+            y = y0 + i * 36
             g2d.set_color(COLOR_CYAN)
-            g2d.draw_text(tasto, (box_x + 120, y), 20)
+            g2d.draw_text(tasto, (box_x + int(box_w * 0.30), y), 20)
             g2d.set_color(COLOR_WHITE)
-            g2d.draw_text(desc, (box_x + 310, y), 18)
+            g2d.draw_text(desc, (box_x + int(box_w * 0.70), y), 18)
 
-        # Obiettivo
+        # Obiettivi
         g2d.set_color(COLOR_YELLOW)
-        g2d.draw_text(
-            "Obiettivo: Mangia tutti i pallini", (cx, box_y + 260), 18
-        )
+        g2d.draw_text("Mangia tutti i pallini!", (cx, box_y + box_h - 100), 20)
         g2d.set_color(COLOR_RED)
-        g2d.draw_text(
-            "ed evita i fantasmi per vincere!", (cx, box_y + 285), 18
-        )
+        g2d.draw_text("Ed evita i fantasmi!", (cx, box_y + box_h - 70), 20)
 
-        # Messaggio di chiusura
+        # Footer
         g2d.set_color(COLOR_GRAY)
-        g2d.draw_text(
-            "Premi INVIO, ESC o clicca per tornare", (cx, box_y + 330), 15
-        )
+        g2d.draw_text("Premi INVIO o Clicca per uscire", (cx, box_y + box_h - 30), 14)

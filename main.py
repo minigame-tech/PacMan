@@ -13,6 +13,7 @@ FPS = 30
 
 SPRITE     = "assets/img/pac-man.png"
 BACKGROUND = "assets/img/pac-man-bg.png"
+MENU_BG    = "assets/img/Backgound_MainMenu.jpeg"
 
 BASE_DIR  = Path(__file__).resolve().parent
 AUDIO_DIR = BASE_DIR / "assets" / "audio"
@@ -230,10 +231,14 @@ def inizializza() -> None:
     g2d.init_canvas((CANVAS_W, CANVAS_H))
     g2d.load_image(SPRITE)
     g2d.load_image(BACKGROUND)
+    try:
+        g2d.load_image(MENU_BG)
+    except Exception:
+        pass
 
     pygame.mixer.init()
     try:
-        # Carica i due suoni alternati per il movimento / mangiata pallini
+        # Carica i due suoni alternati per la mangiata dei pallini
         s0 = pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_0.wav"))
         s1 = pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_1.wav"))
         _sfx_eat_dots = [s0, s1]
@@ -262,7 +267,6 @@ def _avvia_partita() -> None:
     _punteggio = 0
     _stato     = "gioco"
 
-    # Fai ripartire la musica di sottofondo se era stata fermata
     try:
         if not pygame.mixer.music.get_busy():
             pygame.mixer.music.play(-1)
@@ -274,7 +278,6 @@ def _torna_al_menu() -> None:
     global _stato
     _stato = "menu"
 
-    # Fai ripartire la musica di sottofondo se era stata fermata
     try:
         if not pygame.mixer.music.get_busy():
             pygame.mixer.music.play(-1)
@@ -295,7 +298,6 @@ def _gestisci_pallini() -> None:
             pallino[2] = False
             _punteggio += 10
             
-            # Alterna eat_dot_0.wav ed eat_dot_1.wav
             if _sfx_eat_dots:
                 _sfx_eat_dots[_idx_sound].play()
                 _idx_sound = (1 - _idx_sound)
@@ -319,7 +321,6 @@ def _controlla_vittoria() -> None:
 def _controlla_game_over() -> None:
     global _stato
     if not _giocatore.vivo:
-        # Ferma la musica di sottofondo e tutti i suoni di gioco in riproduzione
         pygame.mixer.music.stop()
         pygame.mixer.stop()
 
@@ -364,11 +365,9 @@ def _disegna_pallini() -> None:
 
 
 def _disegna_hud() -> None:
-    # 1. Sfondo nero per la barra dell'HUD in alto
     g2d.set_color((0, 0, 0))
     g2d.draw_rect((0, 0), (CANVAS_W, HUD_H))
 
-    # 2. Testo in giallo ben contrastato
     g2d.set_color(COLOR_YELLOW)
     g2d.draw_text(f"Punteggio: {_punteggio}", (80, HUD_H // 2), 18)
     g2d.draw_text(f"Vite: {_giocatore.vite}", (CANVAS_W - 80, HUD_H // 2), 18)
