@@ -3,7 +3,7 @@ import random
 import pygame
 import lib.g2d as g2d
 from pathlib import Path
-from src.Giocatore import Giocatore, CELL       # CELL deve essere 16 (vedi nota sopra)
+from src.Giocatore import Giocatore, CELL       # CELL deve essere 16
 from src.Menu.Main_Menu import Main_Menu
 
 # ===========================================================================
@@ -18,13 +18,7 @@ BASE_DIR  = Path(__file__).resolve().parent
 AUDIO_DIR = BASE_DIR / "assets" / "audio"
 
 # ---------------------------------------------------------------------------
-# Labirinto estratto da pac-man-bg.png (griglia 29x32, cella originale 8px,
-# qui disegnata a CELL px/cella, cioè scala 2x se CELL=16).
-# '#' = muro, '.' = corridoio, 'g' = casa fantasmi (vietata a Pac-Man).
-#
-# Perimetro chiuso su tutti i lati tranne la riga 20, l'unico vero tunnel
-# orizzontale: lì sia il bordo sinistro sia quello destro restano '.', così
-# il wrap-around di Giocatore.aggiorna() scatta solo in quel corridoio.
+# Labirinto estratto da pac-man-bg.png (griglia 29x32 se CELL=16).
 # ---------------------------------------------------------------------------
 MAZE = [
     "#############################",
@@ -79,8 +73,7 @@ START_COL, START_ROW = 14, 23
 COLOR_YELLOW = (255, 255, 0)
 COLOR_WHITE  = (255, 255, 255)
 
-# Coordinate di ritaglio nello sprite sheet (16x16 nativi) per i fantasmi:
-# un frame statico per colore (riga dedicata, colonna 0)
+# Coordinate di ritaglio nello sprite sheet (16x16 nativi) per i fantasmi
 GHOST_CLIPS = {
     "red":    (0, 4 * 16, 16, 16),
     "pink":   (0, 5 * 16, 16, 16),
@@ -97,11 +90,10 @@ DIREZIONI = {
 
 
 # ===========================================================================
-# MAPPA — adapter richiesto da Giocatore.aggiorna(mappa): espone e_muro(x, y)
+# MAPPA — adapter per Giocatore.aggiorna(mappa)
 # ===========================================================================
 class Mappa:
-    """Converte coordinate pixel (centro di Pac-Man) in cella della griglia
-    e risponde se quella cella è un muro (o la casa dei fantasmi)."""
+    """Converte coordinate pixel in cella della griglia e rileva muri."""
 
     def __init__(self, griglia: list, cell: int, offset_x: int, offset_y: int):
         self._griglia = griglia
@@ -115,9 +107,9 @@ class Mappa:
         col = int((x - self._offset_x) // self._cell)
         row = int((y - self._offset_y) // self._cell)
         if row < 0 or row >= self._rows or col < 0 or col >= self._cols:
-            return False  # fuori griglia: lasciato passare (zona di tunnel/wrap)
+            return False  # Zona di tunnel / wrap
         cella = self._griglia[row][col]
-        return cella == "#" or cella == "g"  # Pac-Man non entra nella casa fantasmi
+        return cella == "#" or cella == "g"  # Pac-Man non entra nella casa dei fantasmi
 
     def e_muro_per_fantasma(self, x: float, y: float) -> bool:
         col = int((x - self._offset_x) // self._cell)
@@ -128,9 +120,7 @@ class Mappa:
 
 
 # ===========================================================================
-# FANTASMI — pattugliamento con svolta casuale agli incroci (nessun Fantasma.py
-# esistente nel progetto: implementato qui, sul modello di Veicolo/Piattaforma
-# del Frogger)
+# FANTASMI
 # ===========================================================================
 class Fantasma:
     def __init__(self, col: int, row: int, nome_colore: str, mappa: Mappa, speed: int = 2):
@@ -224,7 +214,8 @@ _fantasmi:  list             = []
 _pallini:   list             = []
 _punteggio: int              = 0
 
-_sfx_pallino:  pygame.mixer.Sound | None = None
+_sfx_eat_dots: list                      = []
+_idx_sound:    int                       = 0
 _sfx_morte:    pygame.mixer.Sound | None = None
 _sfx_vittoria: pygame.mixer.Sound | None = None
 
@@ -234,7 +225,7 @@ _sfx_vittoria: pygame.mixer.Sound | None = None
 # ===========================================================================
 def inizializza() -> None:
     """Crea canvas, carica risorse, istanzia mappa e menu. Chiamata una sola volta."""
-    global _menu, _mappa, _sfx_pallino, _sfx_morte, _sfx_vittoria
+    global _menu, _mappa, _sfx_eat_dots, _sfx_morte, _sfx_vittoria
 
     g2d.init_canvas((CANVAS_W, CANVAS_H))
     g2d.load_image(SPRITE)
@@ -242,14 +233,17 @@ def inizializza() -> None:
 
     pygame.mixer.init()
     try:
-        _sfx_pallino  = pygame.mixer.Sound(str(AUDIO_DIR / "sfx_pallino.wav"))
-        _sfx_morte    = pygame.mixer.Sound(str(AUDIO_DIR / "sfx_morte.wav"))
-        _sfx_vittoria = pygame.mixer.Sound(str(AUDIO_DIR / "sfx_vittoria.wav"))
-        pygame.mixer.music.load(str(AUDIO_DIR / "sfx_main_theme.wav"))
-        pygame.mixer.music.set_volume(0.6)
+        # Carica i due suoni alternati per il movimento / mangiata pallini
+        s0 = pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_0.wav"))
+        s1 = pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_1.wav"))
+        _sfx_eat_dots = [s0, s1]
+
+        # Musica di sottofondo principale a volume ridotto (15%)
+        pygame.mixer.music.load(str(AUDIO_DIR / "start.wav"))
+        pygame.mixer.music.set_volume(0.15)
         pygame.mixer.music.play(-1)
-    except Exception:
-        pass  # audio non ancora presente: ci pensiamo dopo
+    except Exception as e:
+        print(f"Nota caricamento audio: {e}")
 
     _mappa = Mappa(MAZE, CELL, MAZE_OFFSET_X, MAZE_OFFSET_Y)
     _menu = Main_Menu(CANVAS_W, CANVAS_H)
@@ -275,7 +269,7 @@ def _torna_al_menu() -> None:
 # LOGICA DI GIOCO
 # ===========================================================================
 def _gestisci_pallini() -> None:
-    global _punteggio
+    global _punteggio, _idx_sound
     for pallino in _pallini:
         if not pallino[2]:
             continue
@@ -283,8 +277,11 @@ def _gestisci_pallini() -> None:
         if abs(x - _giocatore.x) < CELL // 2 and abs(y - _giocatore.y) < CELL // 2:
             pallino[2] = False
             _punteggio += 10
-            if _sfx_pallino:
-                _sfx_pallino.play()
+            
+            # Alterna eat_dot_0.wav ed eat_dot_1.wav
+            if _sfx_eat_dots:
+                _sfx_eat_dots[_idx_sound].play()
+                _idx_sound = (1 - _idx_sound)
 
 
 def _gestisci_collisioni_fantasmi() -> None:
@@ -313,6 +310,7 @@ def _controlla_game_over() -> None:
 def aggiorna_logica() -> None:
     _giocatore.gestisci_input()
     _giocatore.aggiorna(_mappa)
+    
     for f in _fantasmi:
         f.aggiorna()
 
@@ -326,10 +324,8 @@ def aggiorna_logica() -> None:
 # DISEGNO DI GIOCO
 # ===========================================================================
 def _disegna_sfondo() -> None:
-    """Disegna lo sfondo scalando la superficie cachata da g2d alla
-    dimensione reale del labirinto (MAZE_PIXEL_W x MAZE_PIXEL_H)."""
     try:
-        raw = g2d._loaded[BACKGROUND]  # surface pygame già caricata da g2d.load_image
+        raw = g2d._loaded[BACKGROUND]
         scaled = pygame.transform.scale(raw, (MAZE_PIXEL_W, MAZE_PIXEL_H))
         canvas = g2d.drawing_surface()
         canvas.blit(scaled, (MAZE_OFFSET_X, MAZE_OFFSET_Y))
@@ -346,9 +342,14 @@ def _disegna_pallini() -> None:
 
 
 def _disegna_hud() -> None:
+    # 1. Sfondo nero per la barra dell'HUD in alto
+    g2d.set_color((0, 0, 0))
+    g2d.draw_rect((0, 0), (CANVAS_W, HUD_H))
+
+    # 2. Testo in giallo ben contrastato
     g2d.set_color(COLOR_YELLOW)
-    g2d.draw_text(f"Punteggio: {_punteggio}", (100, 20), 18)
-    g2d.draw_text(f"Vite: {_giocatore.vite}", (CANVAS_W - 70, 20), 18)
+    g2d.draw_text(f"Punteggio: {_punteggio}", (80, HUD_H // 2), 18)
+    g2d.draw_text(f"Vite: {_giocatore.vite}", (CANVAS_W - 80, HUD_H // 2), 18)
 
 
 def _disegna_schermata_finale(testo: str) -> None:
@@ -363,12 +364,12 @@ def _disegna_schermata_finale(testo: str) -> None:
 
 def disegna_gioco() -> None:
     g2d.clear_canvas()
+    _disegna_hud()
     _disegna_sfondo()
     _disegna_pallini()
     for f in _fantasmi:
         f.disegna()
     _giocatore.disegna()
-    _disegna_hud()
     if _stato in ("game_over", "vinci"):
         label = "GAME  OVER" if _stato == "game_over" else "HAI  VINTO!"
         _disegna_schermata_finale(label)
