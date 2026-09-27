@@ -3,7 +3,7 @@ import random
 import pygame
 import lib.g2d as g2d
 from pathlib import Path
-from src.Giocatore import Giocatore, CELL       # CELL deve essere 16
+from src.Giocatore import Giocatore, CELL
 from src.Menu.Main_Menu import Main_Menu
 
 # ===========================================================================
@@ -238,6 +238,9 @@ def inizializza() -> None:
         s1 = pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_1.wav"))
         _sfx_eat_dots = [s0, s1]
 
+        # Carica il suono di morte (death_0.wav)
+        _sfx_morte = pygame.mixer.Sound(str(AUDIO_DIR / "death_0.wav"))
+
         # Musica di sottofondo principale a volume ridotto (15%)
         pygame.mixer.music.load(str(AUDIO_DIR / "start.wav"))
         pygame.mixer.music.set_volume(0.15)
@@ -259,10 +262,24 @@ def _avvia_partita() -> None:
     _punteggio = 0
     _stato     = "gioco"
 
+    # Fai ripartire la musica di sottofondo se era stata fermata
+    try:
+        if not pygame.mixer.music.get_busy():
+            pygame.mixer.music.play(-1)
+    except Exception:
+        pass
+
 
 def _torna_al_menu() -> None:
     global _stato
     _stato = "menu"
+
+    # Fai ripartire la musica di sottofondo se era stata fermata
+    try:
+        if not pygame.mixer.music.get_busy():
+            pygame.mixer.music.play(-1)
+    except Exception:
+        pass
 
 
 # ===========================================================================
@@ -287,8 +304,6 @@ def _gestisci_pallini() -> None:
 def _gestisci_collisioni_fantasmi() -> None:
     for f in _fantasmi:
         if _collide(_giocatore.rettangolo(), f.rettangolo()):
-            if _sfx_morte:
-                _sfx_morte.play()
             _giocatore.muori()
             return
 
@@ -304,6 +319,13 @@ def _controlla_vittoria() -> None:
 def _controlla_game_over() -> None:
     global _stato
     if not _giocatore.vivo:
+        # Ferma la musica di sottofondo e tutti i suoni di gioco in riproduzione
+        pygame.mixer.music.stop()
+        pygame.mixer.stop()
+
+        if _sfx_morte:
+            _sfx_morte.play()
+
         _stato = "game_over"
 
 
