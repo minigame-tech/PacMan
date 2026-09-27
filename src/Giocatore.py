@@ -5,7 +5,7 @@ import pygame as pg
 SPRITE_SIZE = 16
 
 # Dimensione desiderata a schermo
-CELL = 40  
+CELL = 16  
 SPRITE_PATH = "assets/img/pac-man.png"
 
 # Velocità di animazione
