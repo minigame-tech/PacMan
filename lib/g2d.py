@@ -4,23 +4,38 @@
 @license This software is free - https://opensource.org/license/mit
 """
 
-from tkinter import Tk, messagebox, simpledialog
 from urllib.request import urlopen
-import io, math, subprocess, sys
+import io, math, os, subprocess, sys
+
 try:
     import pygame as pg
-except:
-    subprocess.call([sys.executable, "-m", "pip", "install", "pygame",
-                     "--break-system-packages"])
-    import pygame as pg
+except ImportError:
+    if not getattr(sys, 'frozen', False):
+        subprocess.call([sys.executable, "-m", "pip", "install", "pygame",
+                         "--break-system-packages"])
+        import pygame as pg
+    else:
+        raise RuntimeError("pygame non trovato nell'eseguibile congelato")
 
 Point = tuple[float, float]
 Color = tuple[float, float, float]
 
-_tkmain = Tk()
-_tkmain.withdraw()  # hide the main window
-_ws, _hs = _tkmain.winfo_screenwidth(), _tkmain.winfo_screenheight()
-_tkmain.geometry(f"+{_ws // 2}+{_hs // 2}")
+# Tkinter — inizializzazione lazy (opzionale, serve solo per alert/confirm/prompt)
+_tkmain = None
+_ws, _hs = 0, 0
+
+def _ensure_tk():
+    global _tkmain, _ws, _hs
+    if _tkmain is not None:
+        return
+    try:
+        from tkinter import Tk
+        _tkmain = Tk()
+        _tkmain.withdraw()
+        _ws, _hs = _tkmain.winfo_screenwidth(), _tkmain.winfo_screenheight()
+        _tkmain.geometry(f"+{_ws // 2}+{_hs // 2}")
+    except Exception:
+        pass  # tkinter non disponibile (es. .exe senza tk)
 
 _canvas, _display, _tick = None, None, None
 _size, _stroke = (640, 480), 0
@@ -142,19 +157,36 @@ def pause_audio(src: str) -> None:
     _loaded[load_audio(src)].stop()
 
 def alert(message: str) -> None:
+    _ensure_tk()
     if _canvas:
         update_canvas()
-    messagebox.showinfo("", message)
+    try:
+        from tkinter import messagebox
+        messagebox.showinfo("", message)
+    except Exception:
+        print(f"[ALERT] {message}")
 
 def confirm(message: str) -> bool:
+    _ensure_tk()
     if _canvas:
         update_canvas()
-    return messagebox.askokcancel("", message)
+    try:
+        from tkinter import messagebox
+        return messagebox.askokcancel("", message)
+    except Exception:
+        print(f"[CONFIRM] {message}")
+        return True
 
 def prompt(message: str) -> str:
+    _ensure_tk()
     if _canvas:
         update_canvas()
-    return simpledialog.askstring("", message) or ""
+    try:
+        from tkinter import simpledialog
+        return simpledialog.askstring("", message) or ""
+    except Exception:
+        print(f"[PROMPT] {message}")
+        return ""
 
 def mouse_pos() -> Point:
     return _mouse_pos

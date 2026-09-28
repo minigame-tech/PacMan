@@ -1,3 +1,5 @@
+import os
+import sys
 import lib.g2d as g2d
 import pygame as pg
 
@@ -5,8 +7,18 @@ import pygame as pg
 SPRITE_SIZE = 16
 
 # Dimensione desiderata a schermo
-CELL = 16  
-SPRITE_PATH = "assets/img/pac-man.png"
+CELL = 16
+
+def _resource_path(relative_path: str) -> str:
+    """Restituisce il percorso assoluto della risorsa, compatibile con PyInstaller."""
+    if getattr(sys, 'frozen', False):
+        base = sys._MEIPASS
+    else:
+        base = os.path.dirname(os.path.abspath(os.path.join(__file__, "..")))
+    return os.path.join(base, relative_path)
+
+
+SPRITE_PATH = _resource_path(os.path.join("assets", "img", "pac-man.png"))
 
 # Velocità di animazione
 ANIM_SPEED = 6

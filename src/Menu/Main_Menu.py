@@ -1,8 +1,19 @@
 import math
+import os
+import sys
 import pygame
 import lib.g2d as g2d
 
-BACKGROUND = "assets/img/Backgound_MainMenu.jpeg"
+
+def _resource_path(relative_path: str) -> str:
+    """Restituisce il percorso assoluto della risorsa, compatibile con PyInstaller."""
+    if getattr(sys, 'frozen', False):
+        base = sys._MEIPASS
+    else:
+        base = os.path.dirname(os.path.abspath(os.path.join(__file__, "..", "..")))
+    return os.path.join(base, relative_path)
+
+BACKGROUND = _resource_path(os.path.join("assets", "img", "Backgound_MainMenu.jpeg"))
 
 COLOR_BLACK  = (0, 0, 0)
 COLOR_YELLOW = (255, 255, 0)

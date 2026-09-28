@@ -1,4 +1,6 @@
 import math
+import os
+import sys
 import random
 import pygame
 import lib.g2d as g2d
@@ -7,15 +9,28 @@ from src.Giocatore import Giocatore, CELL
 from src.Menu.Main_Menu import Main_Menu
 
 # ===========================================================================
+# CROSS-PLATFORM: risoluzione percorsi (funziona anche nell'exe PyInstaller)
+# ===========================================================================
+def resource_path(relative_path: str) -> str:
+    """Restituisce il percorso assoluto della risorsa, compatibile con PyInstaller."""
+    if getattr(sys, 'frozen', False):
+        # Eseguibile congelato (PyInstaller)
+        base = sys._MEIPASS
+    else:
+        # Script normale
+        base = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, relative_path)
+
+# ===========================================================================
 # COSTANTI
 # ===========================================================================
 FPS = 30
 
-SPRITE     = "assets/img/pac-man.png"
-BACKGROUND = "assets/img/pac-man-bg.png"
-MENU_BG    = "assets/img/Backgound_MainMenu.jpeg"
+SPRITE     = resource_path(os.path.join("assets", "img", "pac-man.png"))
+BACKGROUND = resource_path(os.path.join("assets", "img", "pac-man-bg.png"))
+MENU_BG    = resource_path(os.path.join("assets", "img", "Backgound_MainMenu.jpeg"))
 
-BASE_DIR  = Path(__file__).resolve().parent
+BASE_DIR  = Path(resource_path("."))
 AUDIO_DIR = BASE_DIR / "assets" / "audio"
 
 # ---------------------------------------------------------------------------
@@ -207,18 +222,18 @@ def _collide(a: tuple, b: tuple) -> bool:
 # ===========================================================================
 # STATO GLOBALE
 # ===========================================================================
-_stato:     str              = "menu"
-_menu:      Main_Menu | None = None
-_giocatore: Giocatore | None = None
-_mappa:     Mappa | None     = None
-_fantasmi:  list             = []
-_pallini:   list             = []
-_punteggio: int              = 0
+_stato:     str       = "menu"
+_menu:      object    = None
+_giocatore: object    = None
+_mappa:     object    = None
+_fantasmi:  list      = []
+_pallini:   list      = []
+_punteggio: int       = 0
 
-_sfx_eat_dots: list                      = []
-_idx_sound:    int                       = 0
-_sfx_morte:    pygame.mixer.Sound | None = None
-_sfx_vittoria: pygame.mixer.Sound | None = None
+_sfx_eat_dots: list   = []
+_idx_sound:    int    = 0
+_sfx_morte:    object = None
+_sfx_vittoria: object = None
 
 
 # ===========================================================================
