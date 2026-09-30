@@ -1,117 +1,32 @@
-import math
-import os
-import sys
+import logging
 import random
 import pygame
+from typing import List, Tuple, Dict, Any, Optional
+
 import lib.g2d as g2d
-from pathlib import Path
-from src.Giocatore import Giocatore, CELL
+from src.Giocatore import Giocatore
 from src.Menu.Main_Menu import Main_Menu
+from src.settings import (
+    FPS, CELL, SPRITE, BACKGROUND, MENU_BG, AUDIO_DIR,
+    MAZE, MAZE_COLS, MAZE_ROWS, MAZE_PIXEL_W, MAZE_PIXEL_H,
+    HUD_H, MAZE_OFFSET_X, MAZE_OFFSET_Y, CANVAS_W, CANVAS_H,
+    START_COL, START_ROW, COLOR_YELLOW, COLOR_WHITE,
+    GHOST_CLIPS, DIREZIONI
+)
 
-# ===========================================================================
-# CROSS-PLATFORM: risoluzione percorsi (funziona anche nell'exe PyInstaller)
-# ===========================================================================
-def resource_path(relative_path: str) -> str:
-    """Restituisce il percorso assoluto della risorsa, compatibile con PyInstaller."""
-    if getattr(sys, 'frozen', False):
-        # Eseguibile congelato (PyInstaller)
-        base = sys._MEIPASS
-    else:
-        # Script normale
-        base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, relative_path)
-
-# ===========================================================================
-# COSTANTI
-# ===========================================================================
-FPS = 30
-
-SPRITE     = resource_path(os.path.join("assets", "img", "pac-man.png"))
-BACKGROUND = resource_path(os.path.join("assets", "img", "pac-man-bg.png"))
-MENU_BG    = resource_path(os.path.join("assets", "img", "Backgound_MainMenu.jpeg"))
-
-BASE_DIR  = Path(resource_path("."))
-AUDIO_DIR = BASE_DIR / "assets" / "audio"
-
-# ---------------------------------------------------------------------------
-# Labirinto estratto da pac-man-bg.png (griglia 29x32 se CELL=16).
-# ---------------------------------------------------------------------------
-MAZE = [
-    "#############################",
-    "#.............#.............#",
-    "#.............#.............#",
-    "#..###..####..#..####..###..#",
-    "#..###..####..#..####..###..#",
-    "#...........................#",
-    "#...........................#",
-    "#..###..#..#######..#..###..#",
-    "#.......#.....#.....#.......#",
-    "#.......#.....#.....#.......#",
-    "######..####..#..####..######",
-    "######..#...........#..######",
-    "######..#...........#..######",
-    "######..#..##ggg##..#..######",
-    "...........#ggggg#...........",
-    "...........#ggggg#...........",
-    "######..#..#######..#..######",
-    "######..#...........#..######",
-    "######..#...........#..######",
-    "######..#..#######..#..######",
-    "#.............#.............#",
-    "#.............#.............#",
-    "#..###..####..#..####..###..#",
-    "#....#.................#....#",
-    "#....#.................#....#",
-    "###..#..#..#######..#..#..###",
-    "#.......#.....#.....#.......#",
-    "#.......#.....#.....#.......#",
-    "#..#########..#..#########..#",
-    "#...........................#",
-    "#...........................#",
-    "#############################",
-]
-MAZE_COLS = len(MAZE[0])
-MAZE_ROWS = len(MAZE)
-MAZE_PIXEL_W = MAZE_COLS * CELL   # 464 se CELL=16
-MAZE_PIXEL_H = MAZE_ROWS * CELL   # 512 se CELL=16
-
-HUD_H = 40
-MAZE_OFFSET_X = 0
-MAZE_OFFSET_Y = HUD_H
-
-CANVAS_W = MAZE_PIXEL_W
-CANVAS_H = MAZE_PIXEL_H + HUD_H
-
-# Punto di partenza di Pac-Man (colonna/riga nella griglia)
-START_COL, START_ROW = 14, 23
-
-# Colori
-COLOR_YELLOW = (255, 255, 0)
-COLOR_WHITE  = (255, 255, 255)
-
-# Coordinate di ritaglio nello sprite sheet (16x16 nativi) per i fantasmi
-GHOST_CLIPS = {
-    "red":    (0, 4 * 16, 16, 16),
-    "pink":   (0, 5 * 16, 16, 16),
-    "cyan":   (0, 6 * 16, 16, 16),
-    "orange": (0, 7 * 16, 16, 16),
-}
-
-DIREZIONI = {
-    "su":       (0, -1),
-    "giu":      (0, 1),
-    "sinistra": (-1, 0),
-    "destra":   (1, 0),
-}
+# Configurazione Logging Professionale
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger(__name__)
 
 
-# ===========================================================================
-# MAPPA — adapter per Giocatore.aggiorna(mappa)
-# ===========================================================================
 class Mappa:
-    """Converte coordinate pixel in cella della griglia e rileva muri."""
+    """Converte coordinate pixel in celle della griglia e rileva i muri."""
 
-    def __init__(self, griglia: list, cell: int, offset_x: int, offset_y: int):
+    def __init__(self, griglia: List[str], cell: int, offset_x: int, offset_y: int):
         self._griglia = griglia
         self._cell = cell
         self._offset_x = offset_x
@@ -120,6 +35,7 @@ class Mappa:
         self._rows = len(griglia)
 
     def e_muro(self, x: float, y: float) -> bool:
+        """Controlla se la coordinata corrisponde a un muro o alla casa dei fantasmi (per Pac-Man)."""
         col = int((x - self._offset_x) // self._cell)
         row = int((y - self._offset_y) // self._cell)
         if row < 0 or row >= self._rows or col < 0 or col >= self._cols:
@@ -128,6 +44,7 @@ class Mappa:
         return cella == "#" or cella == "g"  # Pac-Man non entra nella casa dei fantasmi
 
     def e_muro_per_fantasma(self, x: float, y: float) -> bool:
+        """Controlla se la coordinata corrisponde a un muro (i fantasmi passano per 'g')."""
         col = int((x - self._offset_x) // self._cell)
         row = int((y - self._offset_y) // self._cell)
         if row < 0 or row >= self._rows or col < 0 or col >= self._cols:
@@ -135,10 +52,9 @@ class Mappa:
         return self._griglia[row][col] == "#"
 
 
-# ===========================================================================
-# FANTASMI
-# ===========================================================================
 class Fantasma:
+    """Rappresenta un nemico (Fantasma) con logica di movimento autonomo."""
+
     def __init__(self, col: int, row: int, nome_colore: str, mappa: Mappa, speed: int = 2):
         self._x = MAZE_OFFSET_X + col * CELL
         self._y = MAZE_OFFSET_Y + row * CELL
@@ -150,16 +66,18 @@ class Fantasma:
     def _allineato(self) -> bool:
         return (self._x - MAZE_OFFSET_X) % CELL == 0 and (self._y - MAZE_OFFSET_Y) % CELL == 0
 
-    def _cella_corrente(self) -> tuple:
+    def _cella_corrente(self) -> Tuple[int, int]:
         col = (self._x - MAZE_OFFSET_X) // CELL
         row = (self._y - MAZE_OFFSET_Y) // CELL
         return int(col), int(row)
 
     def aggiorna(self) -> None:
+        """Aggiorna la posizione e la direzione del fantasma."""
         if self._allineato():
             col, row = self._cella_corrente()
             opposta = {"su": "giu", "giu": "su", "sinistra": "destra", "destra": "sinistra"}[self._dir]
             possibili = []
+            
             for nome, (dx, dy) in DIREZIONI.items():
                 if nome == opposta:
                     continue
@@ -167,6 +85,7 @@ class Fantasma:
                 ny = MAZE_OFFSET_Y + (row + dy) * CELL
                 if not self._mappa.e_muro_per_fantasma(nx, ny):
                     possibili.append(nome)
+                    
             if not possibili:
                 possibili = [opposta]
             self._dir = random.choice(possibili)
@@ -175,271 +94,261 @@ class Fantasma:
         self._x += dx * self._speed
         self._y += dy * self._speed
 
+        # Gestione del tunnel ai lati dello schermo
         if self._x < MAZE_OFFSET_X - CELL:
             self._x = MAZE_OFFSET_X + MAZE_PIXEL_W
         elif self._x > MAZE_OFFSET_X + MAZE_PIXEL_W:
             self._x = MAZE_OFFSET_X - CELL
 
-    def rettangolo(self) -> tuple:
+    def rettangolo(self) -> Tuple[float, float, int, int]:
+        """Restituisce il bounding box per le collisioni."""
         return (self._x, self._y, CELL, CELL)
 
     def disegna(self) -> None:
+        """Disegna il fantasma a schermo."""
         cx, cy, cw, ch = self._clip
         g2d.draw_image(SPRITE, (self._x, self._y), (cx, cy), (cw, ch))
 
 
-def _crea_fantasmi(mappa: Mappa) -> list:
-    return [
-        Fantasma(12, 14, "red",    mappa, 2),
-        Fantasma(16, 14, "pink",   mappa, 2),
-        Fantasma(12, 15, "cyan",   mappa, 2),
-        Fantasma(16, 15, "orange", mappa, 2),
-    ]
-
-
-# ===========================================================================
-# PALLINI
-# ===========================================================================
-def _crea_pallini() -> list:
-    pallini = []
-    for row in range(MAZE_ROWS):
-        for col in range(MAZE_COLS):
-            if MAZE[row][col] == ".":
-                if (col, row) == (START_COL, START_ROW):
-                    continue
-                px = MAZE_OFFSET_X + col * CELL + CELL // 2
-                py = MAZE_OFFSET_Y + row * CELL + CELL // 2
-                pallini.append([px, py, True])
-    return pallini
-
-
-def _collide(a: tuple, b: tuple) -> bool:
-    ax, ay, aw, ah = a
-    bx, by, bw, bh = b
-    return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
-
-
-# ===========================================================================
-# STATO GLOBALE
-# ===========================================================================
-_stato:     str       = "menu"
-_menu:      object    = None
-_giocatore: object    = None
-_mappa:     object    = None
-_fantasmi:  list      = []
-_pallini:   list      = []
-_punteggio: int       = 0
-
-_sfx_eat_dots: list   = []
-_idx_sound:    int    = 0
-_sfx_morte:    object = None
-_sfx_vittoria: object = None
-
-
-# ===========================================================================
-# INIZIALIZZAZIONE
-# ===========================================================================
-def inizializza() -> None:
-    """Crea canvas, carica risorse, istanzia mappa e menu. Chiamata una sola volta."""
-    global _menu, _mappa, _sfx_eat_dots, _sfx_morte, _sfx_vittoria
-
-    g2d.init_canvas((CANVAS_W, CANVAS_H))
-    g2d.load_image(SPRITE)
-    g2d.load_image(BACKGROUND)
-    try:
-        g2d.load_image(MENU_BG)
-    except Exception:
-        pass
-
-    pygame.mixer.init()
-    try:
-        # Carica i due suoni alternati per la mangiata dei pallini
-        s0 = pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_0.wav"))
-        s1 = pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_1.wav"))
-        _sfx_eat_dots = [s0, s1]
-
-        # Carica il suono di morte (death_0.wav)
-        _sfx_morte = pygame.mixer.Sound(str(AUDIO_DIR / "death_0.wav"))
-
-        # Musica di sottofondo principale a volume ridotto (15%)
-        pygame.mixer.music.load(str(AUDIO_DIR / "start.wav"))
-        pygame.mixer.music.set_volume(0.15)
-        pygame.mixer.music.play(-1)
-    except Exception as e:
-        print(f"Nota caricamento audio: {e}")
-
-    _mappa = Mappa(MAZE, CELL, MAZE_OFFSET_X, MAZE_OFFSET_Y)
-    _menu = Main_Menu(CANVAS_W, CANVAS_H)
-
-
-def _avvia_partita() -> None:
-    global _giocatore, _fantasmi, _pallini, _punteggio, _stato
-    cx = MAZE_OFFSET_X + START_COL * CELL + CELL // 2
-    cy = MAZE_OFFSET_Y + START_ROW * CELL + CELL // 2
-    _giocatore = Giocatore(cx, cy, CANVAS_W, CANVAS_H)
-    _fantasmi  = _crea_fantasmi(_mappa)
-    _pallini   = _crea_pallini()
-    _punteggio = 0
-    _stato     = "gioco"
-
-    try:
-        if not pygame.mixer.music.get_busy():
-            pygame.mixer.music.play(-1)
-    except Exception:
-        pass
-
-
-def _torna_al_menu() -> None:
-    global _stato
-    _stato = "menu"
-
-    try:
-        if not pygame.mixer.music.get_busy():
-            pygame.mixer.music.play(-1)
-    except Exception:
-        pass
-
-
-# ===========================================================================
-# LOGICA DI GIOCO
-# ===========================================================================
-def _gestisci_pallini() -> None:
-    global _punteggio, _idx_sound
-    for pallino in _pallini:
-        if not pallino[2]:
-            continue
-        x, y, _ = pallino
-        if abs(x - _giocatore.x) < CELL // 2 and abs(y - _giocatore.y) < CELL // 2:
-            pallino[2] = False
-            _punteggio += 10
-            
-            if _sfx_eat_dots:
-                _sfx_eat_dots[_idx_sound].play()
-                _idx_sound = (1 - _idx_sound)
-
-
-def _gestisci_collisioni_fantasmi() -> None:
-    for f in _fantasmi:
-        if _collide(_giocatore.rettangolo(), f.rettangolo()):
-            _giocatore.muori()
-            return
-
-
-def _controlla_vittoria() -> None:
-    global _stato
-    if all(not p[2] for p in _pallini):
-        if _sfx_vittoria:
-            _sfx_vittoria.play()
-        _stato = "vinci"
-
-
-def _controlla_game_over() -> None:
-    global _stato
-    if not _giocatore.vivo:
-        pygame.mixer.music.stop()
-        pygame.mixer.stop()
-
-        if _sfx_morte:
-            _sfx_morte.play()
-
-        _stato = "game_over"
-
-
-def aggiorna_logica() -> None:
-    _giocatore.gestisci_input()
-    _giocatore.aggiorna(_mappa)
+class PacManGame:
+    """Manager principale del ciclo di vita e stato del gioco."""
     
-    for f in _fantasmi:
-        f.aggiorna()
+    def __init__(self):
+        self.stato = "menu"
+        self.punteggio = 0
+        self.idx_sound = 0
+        
+        self.menu: Optional[Main_Menu] = None
+        self.giocatore: Optional[Giocatore] = None
+        self.mappa: Optional[Mappa] = None
+        self.fantasmi: List[Fantasma] = []
+        self.pallini: List[List[Any]] = []
+        
+        # Effetti audio
+        self.sfx_eat_dots: List[pygame.mixer.Sound] = []
+        self.sfx_morte: Optional[pygame.mixer.Sound] = None
+        self.sfx_vittoria: Optional[pygame.mixer.Sound] = None
 
-    _gestisci_pallini()
-    _gestisci_collisioni_fantasmi()
-    _controlla_vittoria()
-    _controlla_game_over()
+    def inizializza(self) -> None:
+        """Configura il canvas, carica le risorse grafiche e audio."""
+        logger.info("Inizializzazione motore grafico (g2d)...")
+        g2d.init_canvas((CANVAS_W, CANVAS_H))
+        
+        # Caricamento assets
+        g2d.load_image(SPRITE)
+        g2d.load_image(BACKGROUND)
+        try:
+            g2d.load_image(MENU_BG)
+        except Exception as e:
+            logger.warning(f"Immagine menu non trovata: {e}")
 
+        logger.info("Inizializzazione motore audio (pygame.mixer)...")
+        pygame.mixer.init()
+        try:
+            # Effetti sonori
+            self.sfx_eat_dots = [
+                pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_0.wav")),
+                pygame.mixer.Sound(str(AUDIO_DIR / "eat_dot_1.wav"))
+            ]
+            self.sfx_morte = pygame.mixer.Sound(str(AUDIO_DIR / "death_0.wav"))
+            
+            # Colonna sonora (volume basso)
+            pygame.mixer.music.load(str(AUDIO_DIR / "start.wav"))
+            pygame.mixer.music.set_volume(0.15)
+            pygame.mixer.music.play(-1)
+        except Exception as e:
+            logger.error(f"Errore caricamento risorse audio: {e}. Il gioco continuerà senza suoni.")
 
-# ===========================================================================
-# DISEGNO DI GIOCO
-# ===========================================================================
-def _disegna_sfondo() -> None:
-    try:
-        raw = g2d._loaded[BACKGROUND]
-        scaled = pygame.transform.scale(raw, (MAZE_PIXEL_W, MAZE_PIXEL_H))
-        canvas = g2d.drawing_surface()
-        canvas.blit(scaled, (MAZE_OFFSET_X, MAZE_OFFSET_Y))
-    except Exception:
+        # Inizializzazione entità di base
+        self.mappa = Mappa(MAZE, CELL, MAZE_OFFSET_X, MAZE_OFFSET_Y)
+        self.menu = Main_Menu(CANVAS_W, CANVAS_H)
+        logger.info("Gioco inizializzato con successo.")
+
+    def _crea_fantasmi(self) -> List[Fantasma]:
+        """Inizializza i 4 fantasmi principali nelle loro posizioni di spawn."""
+        return [
+            Fantasma(12, 14, "red",    self.mappa, 2),
+            Fantasma(16, 14, "pink",   self.mappa, 2),
+            Fantasma(12, 15, "cyan",   self.mappa, 2),
+            Fantasma(16, 15, "orange", self.mappa, 2),
+        ]
+
+    def _crea_pallini(self) -> List[List[Any]]:
+        """Scansiona la mappa e posiziona i pallini nei percorsi."""
+        pallini = []
+        for row in range(MAZE_ROWS):
+            for col in range(MAZE_COLS):
+                if MAZE[row][col] == ".":
+                    if (col, row) == (START_COL, START_ROW):
+                        continue
+                    px = MAZE_OFFSET_X + col * CELL + CELL // 2
+                    py = MAZE_OFFSET_Y + row * CELL + CELL // 2
+                    pallini.append([px, py, True])  # True = Attivo
+        return pallini
+
+    def _collide(self, a: Tuple[float, float, int, int], b: Tuple[float, float, int, int]) -> bool:
+        """Verifica l'intersezione tra due rettangoli."""
+        ax, ay, aw, ah = a
+        bx, by, bw, bh = b
+        return ax < bx + bw and ax + aw > bx and ay < by + bh and ay + ah > by
+
+    def _avvia_partita(self) -> None:
+        """Prepara le variabili e avvia una nuova sessione di gioco."""
+        logger.info("Avvio nuova partita...")
+        cx = MAZE_OFFSET_X + START_COL * CELL + CELL // 2
+        cy = MAZE_OFFSET_Y + START_ROW * CELL + CELL // 2
+        
+        self.giocatore = Giocatore(cx, cy, CANVAS_W, CANVAS_H)
+        self.fantasmi = self._crea_fantasmi()
+        self.pallini = self._crea_pallini()
+        self.punteggio = 0
+        self.stato = "gioco"
+
+        try:
+            if not pygame.mixer.music.get_busy():
+                pygame.mixer.music.play(-1)
+        except Exception:
+            pass
+
+    def _torna_al_menu(self) -> None:
+        """Ritorna alla schermata del menu principale."""
+        logger.info("Ritorno al menu principale.")
+        self.stato = "menu"
+        try:
+            if not pygame.mixer.music.get_busy():
+                pygame.mixer.music.play(-1)
+        except Exception:
+            pass
+
+    def _gestisci_pallini(self) -> None:
+        """Controlla se il giocatore ha mangiato dei pallini e aggiorna il punteggio."""
+        for pallino in self.pallini:
+            if not pallino[2]:
+                continue
+            x, y, _ = pallino
+            if abs(x - self.giocatore.x) < CELL // 2 and abs(y - self.giocatore.y) < CELL // 2:
+                pallino[2] = False
+                self.punteggio += 10
+                
+                if self.sfx_eat_dots:
+                    self.sfx_eat_dots[self.idx_sound].play()
+                    self.idx_sound = (1 - self.idx_sound)
+
+    def _gestisci_collisioni_fantasmi(self) -> None:
+        """Verifica se il giocatore è stato catturato da un fantasma."""
+        for f in self.fantasmi:
+            if self._collide(self.giocatore.rettangolo(), f.rettangolo()):
+                self.giocatore.muori()
+                return
+
+    def _controlla_vittoria(self) -> None:
+        """Verifica se il giocatore ha raccolto tutti i pallini per vincere la partita."""
+        if all(not p[2] for p in self.pallini):
+            logger.info("Vittoria raggiunta!")
+            if self.sfx_vittoria:
+                self.sfx_vittoria.play()
+            self.stato = "vinci"
+
+    def _controlla_game_over(self) -> None:
+        """Controlla se le vite sono terminate e gestisce il Game Over."""
+        if not self.giocatore.vivo:
+            logger.info("Game Over - Vite terminate.")
+            pygame.mixer.music.stop()
+            pygame.mixer.stop()
+            if self.sfx_morte:
+                self.sfx_morte.play()
+            self.stato = "game_over"
+
+    def _aggiorna_logica(self) -> None:
+        """Esegue l'aggiornamento frame per frame della logica (modello)."""
+        self.giocatore.gestisci_input()
+        self.giocatore.aggiorna(self.mappa)
+        
+        for f in self.fantasmi:
+            f.aggiorna()
+
+        self._gestisci_pallini()
+        self._gestisci_collisioni_fantasmi()
+        self._controlla_vittoria()
+        self._controlla_game_over()
+
+    def _disegna_sfondo(self) -> None:
+        try:
+            raw = g2d._loaded[BACKGROUND]
+            scaled = pygame.transform.scale(raw, (MAZE_PIXEL_W, MAZE_PIXEL_H))
+            canvas = g2d.drawing_surface()
+            canvas.blit(scaled, (MAZE_OFFSET_X, MAZE_OFFSET_Y))
+        except Exception:
+            g2d.set_color((0, 0, 0))
+            g2d.draw_rect((MAZE_OFFSET_X, MAZE_OFFSET_Y), (MAZE_PIXEL_W, MAZE_PIXEL_H))
+
+    def _disegna_pallini(self) -> None:
+        g2d.set_color(COLOR_WHITE)
+        for x, y, attivo in self.pallini:
+            if attivo:
+                g2d.draw_circle((x, y), 2)
+
+    def _disegna_hud(self) -> None:
         g2d.set_color((0, 0, 0))
-        g2d.draw_rect((MAZE_OFFSET_X, MAZE_OFFSET_Y), (MAZE_PIXEL_W, MAZE_PIXEL_H))
+        g2d.draw_rect((0, 0), (CANVAS_W, HUD_H))
 
+        g2d.set_color(COLOR_YELLOW)
+        g2d.draw_text(f"Punteggio: {self.punteggio}", (80, HUD_H // 2), 18)
+        g2d.draw_text(f"Vite: {self.giocatore.vite}", (CANVAS_W - 80, HUD_H // 2), 18)
 
-def _disegna_pallini() -> None:
-    g2d.set_color(COLOR_WHITE)
-    for x, y, attivo in _pallini:
-        if attivo:
-            g2d.draw_circle((x, y), 2)
+    def _disegna_schermata_finale(self, testo: str) -> None:
+        """Mostra l'overlay semi-trasparente per Game Over o Vittoria."""
+        g2d.set_color((0, 0, 0, 170))
+        g2d.draw_rect((0, 0), (CANVAS_W, CANVAS_H))
+        g2d.set_color((255, 220, 0))
+        g2d.draw_text(testo, (CANVAS_W // 2, CANVAS_H // 2 - 20), 40)
+        g2d.set_color(COLOR_WHITE)
+        g2d.draw_text("R = Rigioca   •   M = Menu",
+                      (CANVAS_W // 2, CANVAS_H // 2 + 30), 16)
 
+    def _disegna_gioco(self) -> None:
+        """Effettua il rendering grafico completo del gioco."""
+        g2d.clear_canvas()
+        self._disegna_hud()
+        self._disegna_sfondo()
+        self._disegna_pallini()
+        
+        for f in self.fantasmi:
+            f.disegna()
+            
+        self.giocatore.disegna()
+        
+        if self.stato in ("game_over", "vinci"):
+            label = "GAME  OVER" if self.stato == "game_over" else "HAI  VINTO!"
+            self._disegna_schermata_finale(label)
 
-def _disegna_hud() -> None:
-    g2d.set_color((0, 0, 0))
-    g2d.draw_rect((0, 0), (CANVAS_W, HUD_H))
+    def tick(self) -> None:
+        """Funzione principale chiamata ad ogni frame dal motore g2d."""
+        if self.stato == "menu":
+            self.menu.aggiorna()
+            self.menu.disegna()
+            if self.menu.avvia:
+                self._avvia_partita()
+            elif self.menu.esci:
+                logger.info("Chiusura del gioco dal menu principale.")
+                g2d.close_canvas()
 
-    g2d.set_color(COLOR_YELLOW)
-    g2d.draw_text(f"Punteggio: {_punteggio}", (80, HUD_H // 2), 18)
-    g2d.draw_text(f"Vite: {_giocatore.vite}", (CANVAS_W - 80, HUD_H // 2), 18)
+        elif self.stato == "gioco":
+            self._aggiorna_logica()
+            self._disegna_gioco()
 
-
-def _disegna_schermata_finale(testo: str) -> None:
-    g2d.set_color((0, 0, 0, 170))
-    g2d.draw_rect((0, 0), (CANVAS_W, CANVAS_H))
-    g2d.set_color((255, 220, 0))
-    g2d.draw_text(testo, (CANVAS_W // 2, CANVAS_H // 2 - 20), 40)
-    g2d.set_color(COLOR_WHITE)
-    g2d.draw_text("R = Rigioca   •   M = Menu",
-                  (CANVAS_W // 2, CANVAS_H // 2 + 30), 16)
-
-
-def disegna_gioco() -> None:
-    g2d.clear_canvas()
-    _disegna_hud()
-    _disegna_sfondo()
-    _disegna_pallini()
-    for f in _fantasmi:
-        f.disegna()
-    _giocatore.disegna()
-    if _stato in ("game_over", "vinci"):
-        label = "GAME  OVER" if _stato == "game_over" else "HAI  VINTO!"
-        _disegna_schermata_finale(label)
-
-
-# ===========================================================================
-# TICK PRINCIPALE
-# ===========================================================================
-def tick() -> None:
-    global _stato
-
-    if _stato == "menu":
-        _menu.aggiorna()
-        _menu.disegna()
-        if _menu.avvia:
-            _avvia_partita()
-        elif _menu.esci:
-            g2d.close_canvas()
-
-    elif _stato == "gioco":
-        aggiorna_logica()
-        disegna_gioco()
-
-    else:  # "game_over" | "vinci"
-        disegna_gioco()
-        if g2d.key_pressed("r") or g2d.key_pressed("R"):
-            _avvia_partita()
-        elif g2d.key_pressed("m") or g2d.key_pressed("M"):
-            _torna_al_menu()
+        else:  # "game_over" o "vinci"
+            self._disegna_gioco()
+            if g2d.key_pressed("r") or g2d.key_pressed("R"):
+                self._avvia_partita()
+            elif g2d.key_pressed("m") or g2d.key_pressed("M"):
+                self._torna_al_menu()
 
 
 # ===========================================================================
 # ENTRY POINT
 # ===========================================================================
 if __name__ == "__main__":
-    inizializza()
-    g2d.main_loop(tick, fps=FPS)
+    game = PacManGame()
+    game.inizializza()
+    g2d.main_loop(game.tick, fps=FPS)

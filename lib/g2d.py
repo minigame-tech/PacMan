@@ -164,7 +164,8 @@ def alert(message: str) -> None:
         from tkinter import messagebox
         messagebox.showinfo("", message)
     except Exception:
-        print(f"[ALERT] {message}")
+        import logging
+        logging.warning(f"[ALERT] {message}")
 
 def confirm(message: str) -> bool:
     _ensure_tk()
@@ -174,7 +175,8 @@ def confirm(message: str) -> bool:
         from tkinter import messagebox
         return messagebox.askokcancel("", message)
     except Exception:
-        print(f"[CONFIRM] {message}")
+        import logging
+        logging.warning(f"[CONFIRM] {message}")
         return True
 
 def prompt(message: str) -> str:
@@ -185,7 +187,8 @@ def prompt(message: str) -> str:
         from tkinter import simpledialog
         return simpledialog.askstring("", message) or ""
     except Exception:
-        print(f"[PROMPT] {message}")
+        import logging
+        logging.warning(f"[PROMPT] {message}")
         return ""
 
 def mouse_pos() -> Point:
